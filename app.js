@@ -28,7 +28,7 @@ const DISTANCE_OPTIONS = [
 ];
 
 const MIN_RATE_STARTS = 3;
-const DEFAULT_DATA_URL = "data/jra-results-actual.csv";
+const DEFAULT_DATA_URLS = ["data/jra-results-actual.csv", "jra-results-actual.csv"];
 
 const state = {
   races: [],
@@ -78,9 +78,7 @@ loadDefaultData();
 async function loadDefaultData() {
   outputs.dataWarning.textContent = "実データを読み込み中です。";
   try {
-    const response = await fetch(DEFAULT_DATA_URL);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const text = await response.text();
+    const text = await fetchFirstAvailable(DEFAULT_DATA_URLS);
     state.races = normalizeRows(parseCsv(text));
   } catch (error) {
     if (window.SAMPLE_RACES) {
@@ -93,6 +91,22 @@ async function loadDefaultData() {
   }
   hydrateFilters();
   render();
+}
+
+async function fetchFirstAvailable(urls) {
+  const errors = [];
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+      return await response.text();
+    } catch (error) {
+      errors.push(error.message);
+    }
+  }
+
+  throw new Error(errors.join(" / "));
 }
 
 function hydrateFilters() {
