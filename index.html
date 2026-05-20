@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>日本競馬 条件別ランキング</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <header class="app-header">
+          <div>
+            <p class="eyebrow">JRA Condition Analytics</p>
+            <h1>条件別 騎手・厩舎ランキング</h1>
+          </div>
+          <div class="data-status">
+            <span id="dataCount">0</span>
+            <span>出走データ読み込み済み</span>
+          </div>
+        </header>
+
+        <section class="controls" aria-label="検索条件">
+          <label>
+            競馬場
+            <select id="course">
+              <option value="">すべて</option>
+            </select>
+          </label>
+          <label>
+            コース
+            <select id="surface">
+              <option value="">すべて</option>
+            </select>
+          </label>
+          <label>
+            距離
+            <select id="distance">
+              <option value="">すべて</option>
+            </select>
+          </label>
+          <label>
+            期間
+            <select id="years">
+              <option value="3">過去3年</option>
+              <option value="2">過去2年</option>
+              <option value="1">過去1年</option>
+              <option value="0">全期間</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="toolbar" aria-label="データ操作">
+          <div>
+            <button id="loadSample" type="button">実データに戻す</button>
+            <label class="file-button">
+              CSV読み込み
+              <input id="csvInput" type="file" accept=".csv,text/csv" />
+            </label>
+          </div>
+          <p>
+            CSV列:
+            date,course,surface,distance,jockey,trainer,finish
+          </p>
+        </section>
+
+        <section class="summary" aria-live="polite">
+          <div>
+            <span>対象レース</span>
+            <strong id="meetingCount">0</strong>
+          </div>
+          <div>
+            <span>対象出走</span>
+            <strong id="raceCount">0</strong>
+          </div>
+          <div>
+            <span>データ期間</span>
+            <strong id="dateRange">-</strong>
+          </div>
+          <div>
+            <span>条件</span>
+            <strong id="conditionLabel">すべて</strong>
+          </div>
+          <p id="dataWarning" class="data-warning"></p>
+        </section>
+
+        <section class="rankings">
+          <article>
+            <div class="table-header">
+              <h2>騎手ランキング</h2>
+              <span>勝利数順 / 勝率順</span>
+            </div>
+            <div class="tables">
+              <div>
+                <h3>勝利数 上位</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>騎手</th>
+                      <th>勝利</th>
+                      <th>騎乗</th>
+                      <th>勝率</th>
+                      <th>単回率</th>
+                    </tr>
+                  </thead>
+                  <tbody id="jockeyWins"></tbody>
+                </table>
+              </div>
+              <div>
+                <h3>勝率 上位（3騎乗以上）</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>騎手</th>
+                      <th>勝率</th>
+                      <th>勝利</th>
+                      <th>騎乗</th>
+                      <th>単回率</th>
+                    </tr>
+                  </thead>
+                  <tbody id="jockeyRate"></tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+
+          <article>
+            <div class="table-header">
+              <h2>厩舎ランキング</h2>
+              <span>勝利数順 / 勝率順</span>
+            </div>
+            <div class="tables">
+              <div>
+                <h3>勝利数 上位</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>厩舎</th>
+                      <th>勝利</th>
+                      <th>出走</th>
+                      <th>勝率</th>
+                      <th>単回率</th>
+                    </tr>
+                  </thead>
+                  <tbody id="trainerWins"></tbody>
+                </table>
+              </div>
+              <div>
+                <h3>勝率 上位（3出走以上）</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>厩舎</th>
+                      <th>勝率</th>
+                      <th>勝利</th>
+                      <th>出走</th>
+                      <th>単回率</th>
+                    </tr>
+                  </thead>
+                  <tbody id="trainerRate"></tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
