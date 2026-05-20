@@ -28,10 +28,12 @@ const DISTANCE_OPTIONS = [
 ];
 
 const MIN_RATE_STARTS = 3;
+const SUMMARY_DATA_URLS = ["data/jra-condition-summary.csv", "jra-condition-summary.csv"];
 const DEFAULT_DATA_URLS = ["data/jra-results-actual.csv", "jra-results-actual.csv"];
 
 const state = {
   races: [],
+  summary: [],
 };
 
 const fields = {
@@ -64,6 +66,7 @@ document.querySelector("#csvInput").addEventListener("change", async (event) => 
 
   const text = await file.text();
   state.races = normalizeRows(parseCsv(text));
+  state.summary = [];
   hydrateFilters();
   render();
   event.target.value = "";
@@ -78,16 +81,13 @@ loadDefaultData();
 async function loadDefaultData() {
   outputs.dataWarning.textContent = "実データを読み込み中です。";
   try {
+    const text = await fetchFirstAvailable(SUMMARY_DATA_URLS);
+    state.summary = normalizeSummaryRows(parseCsv(text));
+    state.races = [];
+  } catch (error) {
     const text = await fetchFirstAvailable(DEFAULT_DATA_URLS);
     state.races = normalizeRows(parseCsv(text));
-  } catch (error) {
-    if (window.SAMPLE_RACES) {
-      state.races = normalizeRows(window.SAMPLE_RACES);
-    } else {
-      state.races = [];
-      outputs.dataWarning.textContent =
-        "実データを自動読み込みできませんでした。GitHub Pagesで開くか、CSV読み込みを使ってください。";
-    }
+    state.summary = [];
   }
   hydrateFilters();
   render();
@@ -124,6 +124,11 @@ function fillSelect(select, values, labelFormatter = String) {
 }
 
 function render() {
+  if (state.summary.length) {
+    renderSummaryMode();
+    return;
+  }
+
   const filtered = filterRaces();
   const jockeyStats = buildStats(filtered, "jockey");
   const trainerStats = buildStats(filtered, "trainer");
@@ -142,6 +147,28 @@ function render() {
   renderRows(outputs.trainerRate, sortByRate(trainerStats), "trainer", "rate");
 }
 
+function renderSummaryMode() {
+  const filtered = filterSummaryRows();
+  const conditionRows = filtered.filter((row) => row.kind === "condition");
+  const starts = conditionRows.reduce((sum, row) => sum + row.starts, 0);
+  const raceCount = conditionRows.reduce((sum, row) => sum + row.raceCount, 0);
+  const dates = conditionRows.flatMap((row) => [row.minDate, row.maxDate]).filter(Boolean).sort();
+  const jockeyStats = buildSummaryStats(filtered, "jockey");
+  const trainerStats = buildSummaryStats(filtered, "trainer");
+
+  outputs.dataCount.textContent = starts.toLocaleString("ja-JP");
+  outputs.meetingCount.textContent = raceCount.toLocaleString("ja-JP");
+  outputs.raceCount.textContent = starts.toLocaleString("ja-JP");
+  outputs.dateRange.textContent = dates.length ? `${dates[0]} - ${dates[dates.length - 1]}` : "-";
+  outputs.conditionLabel.textContent = conditionLabel();
+  outputs.dataWarning.textContent = dataWarningByCounts(starts, raceCount);
+
+  renderRows(outputs.jockeyWins, sortByWins(jockeyStats), "jockey", "wins");
+  renderRows(outputs.jockeyRate, sortByRate(jockeyStats), "jockey", "rate");
+  renderRows(outputs.trainerWins, sortByWins(trainerStats), "trainer", "wins");
+  renderRows(outputs.trainerRate, sortByRate(trainerStats), "trainer", "rate");
+}
+
 function filterRaces() {
   const cutoff = getCutoffDate();
   return state.races.filter((race) => {
@@ -149,6 +176,15 @@ function filterRaces() {
     if (fields.surface.value && race.surface !== fields.surface.value) return false;
     if (fields.distance.value && String(race.distance) !== fields.distance.value) return false;
     if (cutoff && race.date < cutoff) return false;
+    return true;
+  });
+}
+
+function filterSummaryRows() {
+  return state.summary.filter((row) => {
+    if (fields.course.value && row.course !== fields.course.value) return false;
+    if (fields.surface.value && row.surface !== fields.surface.value) return false;
+    if (fields.distance.value && String(row.distance) !== fields.distance.value) return false;
     return true;
   });
 }
@@ -176,14 +212,60 @@ function buildStats(races, key) {
   const stats = new Map();
   races.forEach((race) => {
     const name = race[key] || "不明";
-    const current = stats.get(name) || { name, wins: 0, starts: 0, rate: 0, winReturn: 0, roi: 0 };
+    const current = stats.get(name) || {
+      name,
+      wins: 0,
+      seconds: 0,
+      thirds: 0,
+      starts: 0,
+      rate: 0,
+      quinellaRate: 0,
+      showRate: 0,
+      winReturn: 0,
+      roi: 0,
+    };
     current.starts += 1;
     if (race.finish === 1) current.wins += 1;
+    if (race.finish === 2) current.seconds += 1;
+    if (race.finish === 3) current.thirds += 1;
     current.winReturn += race.winPayout || 0;
     current.rate = current.starts ? current.wins / current.starts : 0;
+    current.quinellaRate = current.starts ? (current.wins + current.seconds) / current.starts : 0;
+    current.showRate = current.starts ? (current.wins + current.seconds + current.thirds) / current.starts : 0;
     current.roi = current.starts ? current.winReturn / (current.starts * 100) : 0;
     stats.set(name, current);
   });
+  return [...stats.values()];
+}
+
+function buildSummaryStats(rows, kind) {
+  const stats = new Map();
+  rows
+    .filter((row) => row.kind === kind)
+    .forEach((row) => {
+      const current = stats.get(row.name) || {
+        name: row.name,
+        wins: 0,
+        seconds: 0,
+        thirds: 0,
+        starts: 0,
+        rate: 0,
+        quinellaRate: 0,
+        showRate: 0,
+        winReturn: 0,
+        roi: 0,
+      };
+      current.starts += row.starts;
+      current.wins += row.wins;
+      current.seconds += row.seconds;
+      current.thirds += row.thirds;
+      current.winReturn += row.winReturn;
+      current.rate = current.starts ? current.wins / current.starts : 0;
+      current.quinellaRate = current.starts ? (current.wins + current.seconds) / current.starts : 0;
+      current.showRate = current.starts ? (current.wins + current.seconds + current.thirds) / current.starts : 0;
+      current.roi = current.starts ? current.winReturn / (current.starts * 100) : 0;
+      stats.set(row.name, current);
+    });
   return [...stats.values()];
 }
 
@@ -204,6 +286,13 @@ function dataWarning(races, raceCount) {
   return "";
 }
 
+function dataWarningByCounts(starts, raceCount) {
+  if (!starts) return "この条件に一致する実データがありません。";
+  if (raceCount < 5) return "対象レースが5未満です。勝率ランキングはかなりブレます。";
+  if (starts < 50) return "対象出走が50未満です。勝率ランキングは参考値として見てください。";
+  return "";
+}
+
 function sortByWins(rows) {
   return [...rows].sort((a, b) => b.wins - a.wins || b.rate - a.rate || b.starts - a.starts).slice(0, 10);
 }
@@ -221,7 +310,7 @@ function renderRows(target, rows, nameKey, mode) {
     const emptyRow = document.createElement("tr");
     const cell = document.createElement("td");
     cell.className = "empty";
-    cell.colSpan = 5;
+    cell.colSpan = 7;
     cell.textContent = "対象データがありません";
     emptyRow.append(cell);
     target.append(emptyRow);
@@ -232,8 +321,24 @@ function renderRows(target, rows, nameKey, mode) {
     const tr = document.createElement("tr");
     const cells =
       mode === "wins"
-        ? [row.name, row.wins, row.starts, formatRate(row.rate), formatRate(row.roi)]
-        : [row.name, formatRate(row.rate), row.wins, row.starts, formatRate(row.roi)];
+        ? [
+            row.name,
+            row.wins,
+            row.starts,
+            formatRate(row.rate),
+            formatRate(row.quinellaRate),
+            formatRate(row.showRate),
+            formatRate(row.roi),
+          ]
+        : [
+            row.name,
+            formatRate(row.rate),
+            row.wins,
+            row.starts,
+            formatRate(row.quinellaRate),
+            formatRate(row.showRate),
+            formatRate(row.roi),
+          ];
     cells.forEach((value) => {
       const td = document.createElement("td");
       td.textContent = value;
@@ -272,6 +377,26 @@ function normalizeRows(rows) {
       ...row,
       raceId: [row.date, row.course, row.race || row.source || row.horse].join("|"),
     }));
+}
+
+function normalizeSummaryRows(rows) {
+  return rows
+    .map((row) => ({
+      kind: String(row.kind || "").trim(),
+      course: String(row.course || "").trim(),
+      surface: String(row.surface || "").trim(),
+      distance: Number(String(row.distance || "").replaceAll(",", "")),
+      name: String(row.name || "").trim(),
+      starts: Number(row.starts) || 0,
+      wins: Number(row.wins) || 0,
+      seconds: Number(row.seconds) || 0,
+      thirds: Number(row.thirds) || 0,
+      winReturn: Number(row.winReturn) || 0,
+      raceCount: Number(row.raceCount) || 0,
+      minDate: String(row.minDate || "").trim(),
+      maxDate: String(row.maxDate || "").trim(),
+    }))
+    .filter((row) => row.kind && row.course && row.surface && row.distance && row.name);
 }
 
 function parseCsv(text) {

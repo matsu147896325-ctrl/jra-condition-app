@@ -240,12 +240,12 @@ h3 {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 th,
 td {
-  padding: 10px 8px;
+  padding: 10px 6px;
   border-bottom: 1px solid rgba(32, 34, 35, 0.1);
   text-align: right;
 }
