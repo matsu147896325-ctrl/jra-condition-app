@@ -48,6 +48,23 @@
               <option value="0">全期間</option>
             </select>
           </label>
+          <label>
+            最低騎乗・出走数
+            <select id="minStarts">
+              <option value="0" selected>全て</option>
+              <option value="100">100以上</option>
+              <option value="500">500以上</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="class-filter" aria-label="レースクラス">
+          <div class="filter-title">レースクラス</div>
+          <label class="check-pill all-class">
+            <input id="allClasses" type="checkbox" checked />
+            <span>すべて</span>
+          </label>
+          <div id="raceClassOptions" class="check-grid"></div>
         </section>
 
         <section class="toolbar" aria-label="データ操作">
@@ -60,7 +77,7 @@
           </div>
           <p>
             CSV列:
-            date,course,surface,distance,jockey,trainer,finish
+            date,course,surface,distance,raceClass,horseNumber,jockey,trainer,finish,winPayout
           </p>
         </section>
 
@@ -92,7 +109,7 @@
             </div>
             <div class="tables">
               <div>
-                <h3>勝利数 上位</h3>
+                <h3 id="jockeyWinsTitle">勝利数 上位（全て）</h3>
                 <table>
                   <thead>
                     <tr>
@@ -109,7 +126,7 @@
                 </table>
               </div>
               <div>
-                <h3>勝率 上位（3騎乗以上）</h3>
+                <h3 id="jockeyRateTitle">勝率 上位（全て）</h3>
                 <table>
                   <thead>
                     <tr>
@@ -135,7 +152,7 @@
             </div>
             <div class="tables">
               <div>
-                <h3>勝利数 上位</h3>
+                <h3 id="trainerWinsTitle">勝利数 上位（全て）</h3>
                 <table>
                   <thead>
                     <tr>
@@ -152,7 +169,7 @@
                 </table>
               </div>
               <div>
-                <h3>勝率 上位（3出走以上）</h3>
+                <h3 id="trainerRateTitle">勝率 上位（全て）</h3>
                 <table>
                   <thead>
                     <tr>
@@ -170,9 +187,34 @@
               </div>
             </div>
           </article>
+
+          <article class="wide">
+            <div class="table-header">
+              <h2>馬番別成績</h2>
+              <span>馬番順</span>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>馬番</th>
+                    <th>勝利</th>
+                    <th>出走</th>
+                    <th>勝率</th>
+                    <th>連対率</th>
+                    <th>複勝率</th>
+                    <th>単回率</th>
+                  </tr>
+                </thead>
+                <tbody id="horseNumberRows"></tbody>
+              </table>
+            </div>
+          </article>
         </section>
       </section>
     </main>
-    <script src="app.js"></script>
+    <script src="summary-data.js?v=20260521b"></script>
+    <script src="trainer-affiliations.js?v=20260520b"></script>
+    <script src="app.js?v=20260521b"></script>
   </body>
 </html>

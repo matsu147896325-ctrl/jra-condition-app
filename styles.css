@@ -39,6 +39,7 @@ input {
 
 .app-header,
 .controls,
+.class-filter,
 .toolbar,
 .summary,
 article {
@@ -99,9 +100,51 @@ h1 {
 
 .controls {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
   padding: 18px;
+}
+
+.class-filter {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 18px;
+}
+
+.filter-title {
+  color: #5d625f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.check-pill {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(32, 34, 35, 0.14);
+  border-radius: 8px;
+  background: #fff;
+  color: #202223;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.check-pill input {
+  accent-color: #09664a;
+}
+
+.all-class {
+  font-weight: 800;
 }
 
 label {
@@ -209,6 +252,10 @@ article {
   padding: 18px;
 }
 
+article.wide {
+  grid-column: 1 / -1;
+}
+
 .table-header {
   display: flex;
   justify-content: space-between;
@@ -241,6 +288,10 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+}
+
+.table-scroll {
+  overflow-x: auto;
 }
 
 th,
@@ -278,8 +329,14 @@ td:first-child {
   }
 
   .controls,
+  .class-filter,
   .rankings,
   .summary {
+    grid-template-columns: 1fr;
+  }
+
+  .check-grid {
+    display: grid;
     grid-template-columns: 1fr;
   }
 

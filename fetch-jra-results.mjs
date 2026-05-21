@@ -182,7 +182,11 @@ function parseRace(url, html) {
   const dateLine = textOf(html.match(/<div class="cell date">([\s\S]*?)<\/div>/)?.[1]);
   const courseLine = dateLine.match(/(\d{4})年(\d{1,2})月(\d{1,2})日[\s\S]*?(\d+)回(.+?)(\d+)日/);
   const courseInfo = textOf(html.match(/<div class="cell course">([\s\S]*?)<\/div>/)?.[1]);
-  const raceName = textOf(html.match(/<span class="race_name">([\s\S]*?)<\/span>/)?.[1]);
+  const raceNameHtml = html.match(/<span class="race_name">([\s\S]*?)<\/span>/)?.[1] || "";
+  const raceName = textOf(raceNameHtml);
+  const classText = textOf(html.match(/<div class="cell class">([\s\S]*?)<\/div>/)?.[1]);
+  const grade = extractGradeLabel(raceNameHtml);
+  const raceClass = classifyRace(raceName, classText, grade);
   const courseMatch = courseInfo.match(/([\d,]+)\s*メートル\s*（(芝|ダート|障害)/);
   const raceMatch = html.match(/race_number_main\/race_num_(\d+)\.png/);
 
@@ -206,6 +210,8 @@ function parseRace(url, html) {
       surface,
       distance,
       race,
+      raceName,
+      raceClass,
       meeting: Number(meeting),
       day: Number(dayNo),
       finish: runner.finish,
@@ -216,6 +222,26 @@ function parseRace(url, html) {
       winPayout: winPayouts.get(runner.horseNumber) || 0,
       source: url,
     }));
+}
+
+function extractGradeLabel(html) {
+  const label = html.match(/class="grade_icon[\s\S]*?alt="([^"]+)"/)?.[1] || "";
+  return decodeHtml(label).replace(/\s+/g, "");
+}
+
+function classifyRace(raceName, classText, grade) {
+  if (grade.includes("GⅠ")) return "GⅠ";
+  if (grade.includes("GⅡ")) return "GⅡ";
+  if (grade.includes("GⅢ")) return "GⅢ";
+  if (grade.includes("リステッド")) return "リステッド";
+
+  const text = `${raceName} ${classText}`;
+  if (/新馬|未勝利/.test(text)) return "新馬・未勝利";
+  if (/3勝クラス/.test(text)) return "3勝クラス";
+  if (/2勝クラス/.test(text)) return "2勝クラス";
+  if (/1勝クラス/.test(text)) return "1勝クラス";
+  if (/オープン/.test(text)) return "オープン特別";
+  return "未分類";
 }
 
 function parseRunner(rowHtml) {
@@ -251,7 +277,7 @@ function cell(rowHtml, className) {
 }
 
 function textOf(html = "") {
-  return html
+  return decodeHtml(html)
     .replace(/<script[\s\S]*?<\/script>/g, "")
     .replace(/<style[\s\S]*?<\/style>/g, "")
     .replace(/<[^>]+>/g, " ")
@@ -259,6 +285,18 @@ function textOf(html = "") {
     .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function decodeHtml(text = "") {
+  return text
+    .replace(/&#8544;/g, "Ⅰ")
+    .replace(/&#8545;/g, "Ⅱ")
+    .replace(/&#8546;/g, "Ⅲ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"');
 }
 
 function normalizeName(name) {
@@ -278,6 +316,8 @@ function toCsv(items) {
     "surface",
     "distance",
     "race",
+    "raceName",
+    "raceClass",
     "meeting",
     "day",
     "finish",

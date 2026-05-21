@@ -27,7 +27,18 @@ const DISTANCE_OPTIONS = [
   3200,
 ];
 
-const MIN_RATE_STARTS = 3;
+const RACE_CLASS_OPTIONS = [
+  "GⅠ",
+  "GⅡ",
+  "GⅢ",
+  "リステッド",
+  "オープン特別",
+  "3勝クラス",
+  "2勝クラス",
+  "1勝クラス",
+  "新馬・未勝利",
+];
+
 const SUMMARY_DATA_URLS = ["data/jra-condition-summary.csv", "jra-condition-summary.csv"];
 const DEFAULT_DATA_URLS = ["data/jra-results-actual.csv", "jra-results-actual.csv"];
 
@@ -41,6 +52,9 @@ const fields = {
   surface: document.querySelector("#surface"),
   distance: document.querySelector("#distance"),
   years: document.querySelector("#years"),
+  minStarts: document.querySelector("#minStarts"),
+  allClasses: document.querySelector("#allClasses"),
+  raceClassOptions: document.querySelector("#raceClassOptions"),
 };
 
 const outputs = {
@@ -54,6 +68,11 @@ const outputs = {
   jockeyRate: document.querySelector("#jockeyRate"),
   trainerWins: document.querySelector("#trainerWins"),
   trainerRate: document.querySelector("#trainerRate"),
+  horseNumberRows: document.querySelector("#horseNumberRows"),
+  jockeyWinsTitle: document.querySelector("#jockeyWinsTitle"),
+  jockeyRateTitle: document.querySelector("#jockeyRateTitle"),
+  trainerWinsTitle: document.querySelector("#trainerWinsTitle"),
+  trainerRateTitle: document.querySelector("#trainerRateTitle"),
 };
 
 document.querySelector("#loadSample").addEventListener("click", () => {
@@ -72,7 +91,18 @@ document.querySelector("#csvInput").addEventListener("change", async (event) => 
   event.target.value = "";
 });
 
-Object.values(fields).forEach((field) => field.addEventListener("change", render));
+Object.values(fields)
+  .filter((field) => field instanceof HTMLElement && !["raceClassOptions", "allClasses"].includes(field.id))
+  .forEach((field) => field.addEventListener("change", render));
+
+fields.allClasses.addEventListener("change", () => {
+  if (fields.allClasses.checked) {
+    getRaceClassCheckboxes().forEach((checkbox) => {
+      checkbox.checked = false;
+    });
+  }
+  render();
+});
 
 hydrateFilters();
 render();
@@ -81,13 +111,24 @@ loadDefaultData();
 async function loadDefaultData() {
   outputs.dataWarning.textContent = "実データを読み込み中です。";
   try {
-    const text = await fetchFirstAvailable(SUMMARY_DATA_URLS);
-    state.summary = normalizeSummaryRows(parseCsv(text));
+    if (window.SUMMARY_ROWS) {
+      state.summary = normalizeSummaryRows(window.SUMMARY_ROWS);
+    } else {
+      const text = await fetchFirstAvailable(SUMMARY_DATA_URLS);
+      state.summary = normalizeSummaryRows(parseCsv(text));
+    }
     state.races = [];
   } catch (error) {
-    const text = await fetchFirstAvailable(DEFAULT_DATA_URLS);
-    state.races = normalizeRows(parseCsv(text));
-    state.summary = [];
+    try {
+      const text = await fetchFirstAvailable(DEFAULT_DATA_URLS);
+      state.races = normalizeRows(parseCsv(text));
+      state.summary = [];
+    } catch (fallbackError) {
+      state.races = [];
+      state.summary = [];
+      outputs.dataWarning.textContent =
+        "実データを読み込めませんでした。ページを再読み込みするか、CSV読み込みを使ってください。";
+    }
   }
   hydrateFilters();
   render();
@@ -113,6 +154,30 @@ function hydrateFilters() {
   fillSelect(fields.course, COURSE_OPTIONS);
   fillSelect(fields.surface, SURFACE_OPTIONS);
   fillSelect(fields.distance, DISTANCE_OPTIONS, formatDistance);
+  fillRaceClassOptions();
+}
+
+function fillRaceClassOptions() {
+  if (fields.raceClassOptions.children.length) return;
+
+  RACE_CLASS_OPTIONS.forEach((raceClass) => {
+    const label = document.createElement("label");
+    label.className = "check-pill";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = raceClass;
+    checkbox.addEventListener("change", () => {
+      fields.allClasses.checked = !getRaceClassCheckboxes().some((item) => item.checked);
+      render();
+    });
+
+    const text = document.createElement("span");
+    text.textContent = raceClass;
+
+    label.append(checkbox, text);
+    fields.raceClassOptions.append(label);
+  });
 }
 
 function fillSelect(select, values, labelFormatter = String) {
@@ -132,6 +197,7 @@ function render() {
   const filtered = filterRaces();
   const jockeyStats = buildStats(filtered, "jockey");
   const trainerStats = buildStats(filtered, "trainer");
+  const horseNumberStats = buildStats(filtered, "horseNumber").filter((row) => Number(row.name) > 0);
   const raceCount = countUniqueRaces(filtered);
 
   outputs.dataCount.textContent = state.races.length.toLocaleString("ja-JP");
@@ -140,11 +206,13 @@ function render() {
   outputs.dateRange.textContent = dateRange(filtered);
   outputs.conditionLabel.textContent = conditionLabel();
   outputs.dataWarning.textContent = dataWarning(filtered, raceCount);
+  updateRateTitles();
 
-  renderRows(outputs.jockeyWins, sortByWins(jockeyStats), "jockey", "wins");
-  renderRows(outputs.jockeyRate, sortByRate(jockeyStats), "jockey", "rate");
-  renderRows(outputs.trainerWins, sortByWins(trainerStats), "trainer", "wins");
-  renderRows(outputs.trainerRate, sortByRate(trainerStats), "trainer", "rate");
+  renderRows(outputs.jockeyWins, sortByWins(jockeyStats), "jockey", "wins", "jockey");
+  renderRows(outputs.jockeyRate, sortByRate(jockeyStats), "jockey", "rate", "jockey");
+  renderRows(outputs.trainerWins, sortByWins(trainerStats), "trainer", "wins", "trainer");
+  renderRows(outputs.trainerRate, sortByRate(trainerStats), "trainer", "rate", "trainer");
+  renderHorseNumberRows(outputs.horseNumberRows, sortByHorseNumber(horseNumberStats));
 }
 
 function renderSummaryMode() {
@@ -155,6 +223,7 @@ function renderSummaryMode() {
   const dates = conditionRows.flatMap((row) => [row.minDate, row.maxDate]).filter(Boolean).sort();
   const jockeyStats = buildSummaryStats(filtered, "jockey");
   const trainerStats = buildSummaryStats(filtered, "trainer");
+  const horseNumberStats = buildSummaryStats(filtered, "horseNumber");
 
   outputs.dataCount.textContent = starts.toLocaleString("ja-JP");
   outputs.meetingCount.textContent = raceCount.toLocaleString("ja-JP");
@@ -162,11 +231,13 @@ function renderSummaryMode() {
   outputs.dateRange.textContent = dates.length ? `${dates[0]} - ${dates[dates.length - 1]}` : "-";
   outputs.conditionLabel.textContent = conditionLabel();
   outputs.dataWarning.textContent = dataWarningByCounts(starts, raceCount);
+  updateRateTitles();
 
-  renderRows(outputs.jockeyWins, sortByWins(jockeyStats), "jockey", "wins");
-  renderRows(outputs.jockeyRate, sortByRate(jockeyStats), "jockey", "rate");
-  renderRows(outputs.trainerWins, sortByWins(trainerStats), "trainer", "wins");
-  renderRows(outputs.trainerRate, sortByRate(trainerStats), "trainer", "rate");
+  renderRows(outputs.jockeyWins, sortByWins(jockeyStats), "jockey", "wins", "jockey");
+  renderRows(outputs.jockeyRate, sortByRate(jockeyStats), "jockey", "rate", "jockey");
+  renderRows(outputs.trainerWins, sortByWins(trainerStats), "trainer", "wins", "trainer");
+  renderRows(outputs.trainerRate, sortByRate(trainerStats), "trainer", "rate", "trainer");
+  renderHorseNumberRows(outputs.horseNumberRows, sortByHorseNumber(horseNumberStats));
 }
 
 function filterRaces() {
@@ -175,6 +246,7 @@ function filterRaces() {
     if (fields.course.value && race.course !== fields.course.value) return false;
     if (fields.surface.value && race.surface !== fields.surface.value) return false;
     if (fields.distance.value && String(race.distance) !== fields.distance.value) return false;
+    if (!matchesSelectedRaceClasses(race.raceClass)) return false;
     if (cutoff && race.date < cutoff) return false;
     return true;
   });
@@ -185,8 +257,25 @@ function filterSummaryRows() {
     if (fields.course.value && row.course !== fields.course.value) return false;
     if (fields.surface.value && row.surface !== fields.surface.value) return false;
     if (fields.distance.value && String(row.distance) !== fields.distance.value) return false;
+    if (!matchesSelectedRaceClasses(row.raceClass)) return false;
     return true;
   });
+}
+
+function selectedRaceClasses() {
+  if (fields.allClasses.checked) return [];
+  return getRaceClassCheckboxes()
+    .filter((checkbox) => checkbox.checked)
+    .map((checkbox) => checkbox.value);
+}
+
+function getRaceClassCheckboxes() {
+  return [...fields.raceClassOptions.querySelectorAll('input[type="checkbox"]')];
+}
+
+function matchesSelectedRaceClasses(raceClass) {
+  const classes = selectedRaceClasses();
+  return !classes.length || classes.includes(raceClass);
 }
 
 function getCutoffDate() {
@@ -203,9 +292,17 @@ function conditionLabel() {
     fields.course.value || "全競馬場",
     fields.surface.value || "全コース",
     fields.distance.value ? `${formatDistance(fields.distance.value)}` : "全距離",
+    raceClassLabel(),
     fields.years.options[fields.years.selectedIndex].text,
   ];
   return parts.join(" / ");
+}
+
+function raceClassLabel() {
+  const classes = selectedRaceClasses();
+  if (!classes.length) return "全クラス";
+  if (classes.length <= 3) return classes.join("・");
+  return `${classes.length}クラス選択`;
 }
 
 function buildStats(races, key) {
@@ -294,17 +391,36 @@ function dataWarningByCounts(starts, raceCount) {
 }
 
 function sortByWins(rows) {
-  return [...rows].sort((a, b) => b.wins - a.wins || b.rate - a.rate || b.starts - a.starts).slice(0, 10);
+  return filterByMinStarts(rows)
+    .sort((a, b) => b.wins - a.wins || b.rate - a.rate || b.starts - a.starts)
+    .slice(0, 10);
 }
 
 function sortByRate(rows) {
-  return [...rows]
-    .filter((row) => row.starts >= MIN_RATE_STARTS)
+  return filterByMinStarts(rows)
     .sort((a, b) => b.rate - a.rate || b.wins - a.wins || b.starts - a.starts)
     .slice(0, 10);
 }
 
-function renderRows(target, rows, nameKey, mode) {
+function sortByHorseNumber(rows) {
+  return [...rows].sort((a, b) => Number(a.name) - Number(b.name));
+}
+
+function filterByMinStarts(rows) {
+  const minStarts = Number(fields.minStarts.value) || 0;
+  return [...rows].filter((row) => row.starts >= minStarts);
+}
+
+function updateRateTitles() {
+  const minStarts = Number(fields.minStarts.value) || 0;
+  const label = minStarts ? `${minStarts.toLocaleString("ja-JP")}以上` : "全て";
+  outputs.jockeyWinsTitle.textContent = `勝利数 上位（${label}）`;
+  outputs.jockeyRateTitle.textContent = `勝率 上位（${label}）`;
+  outputs.trainerWinsTitle.textContent = `勝利数 上位（${label}）`;
+  outputs.trainerRateTitle.textContent = `勝率 上位（${label}）`;
+}
+
+function renderRows(target, rows, nameKey, mode, entityType) {
   target.replaceChildren();
   if (!rows.length) {
     const emptyRow = document.createElement("tr");
@@ -319,10 +435,11 @@ function renderRows(target, rows, nameKey, mode) {
 
   rows.forEach((row) => {
     const tr = document.createElement("tr");
+    const displayName = entityType === "trainer" ? formatTrainerName(row.name) : row.name;
     const cells =
       mode === "wins"
         ? [
-            row.name,
+            displayName,
             row.wins,
             row.starts,
             formatRate(row.rate),
@@ -331,7 +448,7 @@ function renderRows(target, rows, nameKey, mode) {
             formatRate(row.roi),
           ]
         : [
-            row.name,
+            displayName,
             formatRate(row.rate),
             row.wins,
             row.starts,
@@ -339,6 +456,39 @@ function renderRows(target, rows, nameKey, mode) {
             formatRate(row.showRate),
             formatRate(row.roi),
           ];
+    cells.forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = value;
+      tr.append(td);
+    });
+    target.append(tr);
+  });
+}
+
+function renderHorseNumberRows(target, rows) {
+  target.replaceChildren();
+  if (!rows.length) {
+    const emptyRow = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.className = "empty";
+    cell.colSpan = 7;
+    cell.textContent = "対象データがありません";
+    emptyRow.append(cell);
+    target.append(emptyRow);
+    return;
+  }
+
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    const cells = [
+      `${Number(row.name)}番`,
+      row.wins,
+      row.starts,
+      formatRate(row.rate),
+      formatRate(row.quinellaRate),
+      formatRate(row.showRate),
+      formatRate(row.roi),
+    ];
     cells.forEach((value) => {
       const td = document.createElement("td");
       td.textContent = value;
@@ -356,6 +506,11 @@ function formatDistance(distance) {
   return `${Number(distance).toLocaleString("ja-JP")}m`;
 }
 
+function formatTrainerName(name) {
+  const affiliation = window.TRAINER_AFFILIATIONS?.[name] || "その他";
+  return `${name}（${affiliation}）`;
+}
+
 function normalizeRows(rows) {
   return rows
     .map((row) => ({
@@ -363,6 +518,7 @@ function normalizeRows(rows) {
       course: String(row.course || "").trim(),
       surface: String(row.surface || "").trim(),
       distance: Number(String(row.distance || "").replaceAll(",", "")),
+      raceClass: normalizeRaceClass(row.raceClass),
       race: Number(row.race) || 0,
       horseNumber: Number(row.horseNumber) || 0,
       horse: String(row.horse || "").trim(),
@@ -380,12 +536,19 @@ function normalizeRows(rows) {
 }
 
 function normalizeSummaryRows(rows) {
+  const headers = window.SUMMARY_HEADERS || [];
   return rows
+    .map((row) =>
+      Array.isArray(row)
+        ? Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""]))
+        : row,
+    )
     .map((row) => ({
       kind: String(row.kind || "").trim(),
       course: String(row.course || "").trim(),
       surface: String(row.surface || "").trim(),
       distance: Number(String(row.distance || "").replaceAll(",", "")),
+      raceClass: normalizeRaceClass(row.raceClass),
       name: String(row.name || "").trim(),
       starts: Number(row.starts) || 0,
       wins: Number(row.wins) || 0,
@@ -396,7 +559,11 @@ function normalizeSummaryRows(rows) {
       minDate: String(row.minDate || "").trim(),
       maxDate: String(row.maxDate || "").trim(),
     }))
-    .filter((row) => row.kind && row.course && row.surface && row.distance && row.name);
+    .filter((row) => row.kind && row.course && row.surface && row.distance && row.raceClass && row.name);
+}
+
+function normalizeRaceClass(value) {
+  return String(value || "未分類").trim();
 }
 
 function parseCsv(text) {
