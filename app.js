@@ -95,12 +95,8 @@ Object.values(fields)
   .filter((field) => field instanceof HTMLElement && !["raceClassOptions", "allClasses"].includes(field.id))
   .forEach((field) => field.addEventListener("change", render));
 
-fields.allClasses.addEventListener("change", () => {
-  if (fields.allClasses.checked) {
-    getRaceClassCheckboxes().forEach((checkbox) => {
-      checkbox.checked = false;
-    });
-  }
+fields.allClasses.addEventListener("click", () => {
+  setAllRaceClassesActive();
   render();
 });
 
@@ -161,22 +157,19 @@ function fillRaceClassOptions() {
   if (fields.raceClassOptions.children.length) return;
 
   RACE_CLASS_OPTIONS.forEach((raceClass) => {
-    const label = document.createElement("label");
-    label.className = "check-pill";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.value = raceClass;
-    checkbox.addEventListener("change", () => {
-      fields.allClasses.checked = !getRaceClassCheckboxes().some((item) => item.checked);
+    const button = document.createElement("button");
+    button.className = "class-button";
+    button.type = "button";
+    button.value = raceClass;
+    button.textContent = raceClass;
+    button.setAttribute("aria-pressed", "false");
+    button.addEventListener("click", () => {
+      button.classList.toggle("is-active");
+      button.setAttribute("aria-pressed", button.classList.contains("is-active") ? "true" : "false");
+      syncAllRaceClassButton();
       render();
     });
-
-    const text = document.createElement("span");
-    text.textContent = raceClass;
-
-    label.append(checkbox, text);
-    fields.raceClassOptions.append(label);
+    fields.raceClassOptions.append(button);
   });
 }
 
@@ -263,14 +256,29 @@ function filterSummaryRows() {
 }
 
 function selectedRaceClasses() {
-  if (fields.allClasses.checked) return [];
-  return getRaceClassCheckboxes()
-    .filter((checkbox) => checkbox.checked)
-    .map((checkbox) => checkbox.value);
+  if (fields.allClasses.classList.contains("is-active")) return [];
+  return getRaceClassButtons()
+    .filter((button) => button.classList.contains("is-active"))
+    .map((button) => button.value);
 }
 
-function getRaceClassCheckboxes() {
-  return [...fields.raceClassOptions.querySelectorAll('input[type="checkbox"]')];
+function getRaceClassButtons() {
+  return [...fields.raceClassOptions.querySelectorAll("button")];
+}
+
+function setAllRaceClassesActive() {
+  fields.allClasses.classList.add("is-active");
+  fields.allClasses.setAttribute("aria-pressed", "true");
+  getRaceClassButtons().forEach((button) => {
+    button.classList.remove("is-active");
+    button.setAttribute("aria-pressed", "false");
+  });
+}
+
+function syncAllRaceClassButton() {
+  const hasSelectedClass = getRaceClassButtons().some((button) => button.classList.contains("is-active"));
+  fields.allClasses.classList.toggle("is-active", !hasSelectedClass);
+  fields.allClasses.setAttribute("aria-pressed", hasSelectedClass ? "false" : "true");
 }
 
 function matchesSelectedRaceClasses(raceClass) {

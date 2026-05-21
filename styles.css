@@ -111,6 +111,8 @@ h1 {
   gap: 12px;
   align-items: center;
   padding: 14px 18px;
+  background: #fffaf0;
+  border-color: rgba(9, 102, 74, 0.24);
 }
 
 .filter-title {
@@ -125,26 +127,32 @@ h1 {
   gap: 8px;
 }
 
-.check-pill {
+.class-button {
   display: inline-flex;
   min-height: 36px;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   padding: 0 10px;
-  border: 1px solid rgba(32, 34, 35, 0.14);
+  border: 1px solid rgba(9, 102, 74, 0.28);
   border-radius: 8px;
-  background: #fff;
+  background: #ffffff;
   color: #202223;
   cursor: pointer;
   font-size: 13px;
-}
-
-.check-pill input {
-  accent-color: #09664a;
-}
-
-.all-class {
   font-weight: 800;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.class-button:hover {
+  border-color: #09664a;
+  background: #eef8f2;
+}
+
+.class-button.is-active {
+  background: #09664a;
+  border-color: #09664a;
+  color: #fff;
 }
 
 label {
@@ -336,8 +344,8 @@ td:first-child {
   }
 
   .check-grid {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-wrap: wrap;
   }
 
   .data-status {
