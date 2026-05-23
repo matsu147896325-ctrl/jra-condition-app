@@ -39,6 +39,34 @@ const RACE_CLASS_OPTIONS = [
   "新馬・未勝利",
 ];
 
+const TRACK_CONDITION_OPTIONS = ["良", "稍重", "重", "不良"];
+
+const RACE_CONDITION_OPTIONS = [
+  "古馬混合",
+  "牝馬限定",
+  "3歳限定",
+  "3歳牝馬限定",
+  "2歳限定",
+  "2歳牝馬限定",
+];
+
+const ODDS_BAND_OPTIONS = [
+  "1倍台",
+  "2倍台",
+  "3倍台",
+  "4倍台",
+  "5倍台",
+  "6倍台",
+  "7倍台",
+  "8倍台",
+  "9倍台",
+  "10倍台",
+  "20倍台",
+  "30倍〜50倍台",
+  "51〜99倍台",
+  "100倍台以上",
+];
+
 const DATA_START_YEAR = 2016;
 const DATA_END_YEAR = 2025;
 
@@ -54,6 +82,11 @@ const state = {
     trainerWins: { key: "wins", direction: "desc" },
     trainerRate: { key: "rate", direction: "desc" },
     horseNumberRows: { key: "horseNumber", direction: "asc" },
+    sireWins: { key: "wins", direction: "desc" },
+    sireRate: { key: "rate", direction: "desc" },
+    damsireWins: { key: "wins", direction: "desc" },
+    damsireRate: { key: "rate", direction: "desc" },
+    oddsBandRows: { key: "oddsBand", direction: "asc" },
   },
 };
 
@@ -65,6 +98,10 @@ const fields = {
   minStarts: document.querySelector("#minStarts"),
   allClasses: document.querySelector("#allClasses"),
   raceClassOptions: document.querySelector("#raceClassOptions"),
+  allTrackConditions: document.querySelector("#allTrackConditions"),
+  trackConditionOptions: document.querySelector("#trackConditionOptions"),
+  allRaceConditions: document.querySelector("#allRaceConditions"),
+  raceConditionOptions: document.querySelector("#raceConditionOptions"),
 };
 
 const outputs = {
@@ -79,10 +116,19 @@ const outputs = {
   trainerWins: document.querySelector("#trainerWins"),
   trainerRate: document.querySelector("#trainerRate"),
   horseNumberRows: document.querySelector("#horseNumberRows"),
+  sireWins: document.querySelector("#sireWins"),
+  sireRate: document.querySelector("#sireRate"),
+  damsireWins: document.querySelector("#damsireWins"),
+  damsireRate: document.querySelector("#damsireRate"),
+  oddsBandRows: document.querySelector("#oddsBandRows"),
   jockeyWinsTitle: document.querySelector("#jockeyWinsTitle"),
   jockeyRateTitle: document.querySelector("#jockeyRateTitle"),
   trainerWinsTitle: document.querySelector("#trainerWinsTitle"),
   trainerRateTitle: document.querySelector("#trainerRateTitle"),
+  sireWinsTitle: document.querySelector("#sireWinsTitle"),
+  sireRateTitle: document.querySelector("#sireRateTitle"),
+  damsireWinsTitle: document.querySelector("#damsireWinsTitle"),
+  damsireRateTitle: document.querySelector("#damsireRateTitle"),
 };
 
 document.querySelector("#loadSample").addEventListener("click", () => {
@@ -102,11 +148,32 @@ document.querySelector("#csvInput").addEventListener("change", async (event) => 
 });
 
 Object.values(fields)
-  .filter((field) => field instanceof HTMLElement && !["raceClassOptions", "allClasses"].includes(field.id))
+  .filter(
+    (field) =>
+      field instanceof HTMLElement &&
+      ![
+        "raceClassOptions",
+        "allClasses",
+        "trackConditionOptions",
+        "allTrackConditions",
+        "raceConditionOptions",
+        "allRaceConditions",
+      ].includes(field.id),
+  )
   .forEach((field) => field.addEventListener("change", render));
 
 fields.allClasses.addEventListener("click", () => {
-  setAllRaceClassesActive();
+  setAllButtonActive(fields.allClasses, fields.raceClassOptions);
+  render();
+});
+
+fields.allTrackConditions.addEventListener("click", () => {
+  setAllButtonActive(fields.allTrackConditions, fields.trackConditionOptions);
+  render();
+});
+
+fields.allRaceConditions.addEventListener("click", () => {
+  setAllButtonActive(fields.allRaceConditions, fields.raceConditionOptions);
   render();
 });
 
@@ -161,7 +228,9 @@ function hydrateFilters() {
   fillSelect(fields.course, COURSE_OPTIONS);
   fillSelect(fields.surface, SURFACE_OPTIONS);
   fillSelect(fields.distance, DISTANCE_OPTIONS, formatDistance);
-  fillRaceClassOptions();
+  fillButtonOptions(fields.raceClassOptions, RACE_CLASS_OPTIONS, fields.allClasses);
+  fillButtonOptions(fields.trackConditionOptions, TRACK_CONDITION_OPTIONS, fields.allTrackConditions);
+  fillButtonOptions(fields.raceConditionOptions, RACE_CONDITION_OPTIONS, fields.allRaceConditions);
 }
 
 function initSortableHeaders() {
@@ -171,6 +240,11 @@ function initSortableHeaders() {
     trainerWins: ["name", "wins", "starts", "rate", "quinellaRate", "showRate", "roi"],
     trainerRate: ["name", "rate", "wins", "starts", "quinellaRate", "showRate", "roi"],
     horseNumberRows: ["horseNumber", "wins", "starts", "rate", "quinellaRate", "showRate", "roi"],
+    sireWins: ["name", "wins", "starts", "rate", "quinellaRate", "showRate", "roi"],
+    sireRate: ["name", "rate", "wins", "starts", "quinellaRate", "showRate", "roi"],
+    damsireWins: ["name", "wins", "starts", "rate", "quinellaRate", "showRate", "roi"],
+    damsireRate: ["name", "rate", "wins", "starts", "quinellaRate", "showRate", "roi"],
+    oddsBandRows: ["oddsBand", "wins", "starts", "rate", "quinellaRate", "showRate", "roi"],
   };
 
   Object.entries(tableSorts).forEach(([tableId, keys]) => {
@@ -192,23 +266,23 @@ function initSortableHeaders() {
   });
 }
 
-function fillRaceClassOptions() {
-  if (fields.raceClassOptions.children.length) return;
+function fillButtonOptions(container, values, allButton) {
+  if (container.children.length) return;
 
-  RACE_CLASS_OPTIONS.forEach((raceClass) => {
+  values.forEach((value) => {
     const button = document.createElement("button");
     button.className = "class-button";
     button.type = "button";
-    button.value = raceClass;
-    button.textContent = raceClass;
+    button.value = value;
+    button.textContent = value;
     button.setAttribute("aria-pressed", "false");
     button.addEventListener("click", () => {
       button.classList.toggle("is-active");
       button.setAttribute("aria-pressed", button.classList.contains("is-active") ? "true" : "false");
-      syncAllRaceClassButton();
+      syncAllButton(allButton, container);
       render();
     });
-    fields.raceClassOptions.append(button);
+    container.append(button);
   });
 }
 
@@ -230,6 +304,9 @@ function render() {
   const jockeyStats = buildStats(filtered, "jockey");
   const trainerStats = buildStats(filtered, "trainer");
   const horseNumberStats = buildStats(filtered, "horseNumber").filter((row) => Number(row.name) > 0);
+  const sireStats = buildStats(filtered, "sire").filter((row) => row.name !== "不明");
+  const damsireStats = buildStats(filtered, "damsire").filter((row) => row.name !== "不明");
+  const oddsBandStats = buildStats(filtered, "oddsBand").filter((row) => ODDS_BAND_OPTIONS.includes(row.name));
   const raceCount = countUniqueRaces(filtered);
 
   outputs.dataCount.textContent = state.races.length.toLocaleString("ja-JP");
@@ -246,6 +323,11 @@ function render() {
   renderRows(outputs.trainerWins, sortForTable(trainerStats, "trainerWins", true), "trainer", "wins", "trainer");
   renderRows(outputs.trainerRate, sortForTable(trainerStats, "trainerRate", true), "trainer", "rate", "trainer");
   renderHorseNumberRows(outputs.horseNumberRows, sortForTable(horseNumberStats, "horseNumberRows", false));
+  renderRows(outputs.sireWins, sortForTable(sireStats, "sireWins", true), "sire", "wins", "sire");
+  renderRows(outputs.sireRate, sortForTable(sireStats, "sireRate", true), "sire", "rate", "sire");
+  renderRows(outputs.damsireWins, sortForTable(damsireStats, "damsireWins", true), "damsire", "wins", "damsire");
+  renderRows(outputs.damsireRate, sortForTable(damsireStats, "damsireRate", true), "damsire", "rate", "damsire");
+  renderBandRows(outputs.oddsBandRows, sortForTable(oddsBandStats, "oddsBandRows", false), "oddsBand");
 }
 
 function renderSummaryMode() {
@@ -257,6 +339,9 @@ function renderSummaryMode() {
   const jockeyStats = buildSummaryStats(filtered, "jockey");
   const trainerStats = buildSummaryStats(filtered, "trainer");
   const horseNumberStats = buildSummaryStats(filtered, "horseNumber");
+  const sireStats = buildSummaryStats(filtered, "sire").filter((row) => row.name !== "不明");
+  const damsireStats = buildSummaryStats(filtered, "damsire").filter((row) => row.name !== "不明");
+  const oddsBandStats = buildSummaryStats(filtered, "oddsBand").filter((row) => ODDS_BAND_OPTIONS.includes(row.name));
 
   outputs.dataCount.textContent = starts.toLocaleString("ja-JP");
   outputs.meetingCount.textContent = raceCount.toLocaleString("ja-JP");
@@ -272,6 +357,11 @@ function renderSummaryMode() {
   renderRows(outputs.trainerWins, sortForTable(trainerStats, "trainerWins", true), "trainer", "wins", "trainer");
   renderRows(outputs.trainerRate, sortForTable(trainerStats, "trainerRate", true), "trainer", "rate", "trainer");
   renderHorseNumberRows(outputs.horseNumberRows, sortForTable(horseNumberStats, "horseNumberRows", false));
+  renderRows(outputs.sireWins, sortForTable(sireStats, "sireWins", true), "sire", "wins", "sire");
+  renderRows(outputs.sireRate, sortForTable(sireStats, "sireRate", true), "sire", "rate", "sire");
+  renderRows(outputs.damsireWins, sortForTable(damsireStats, "damsireWins", true), "damsire", "wins", "damsire");
+  renderRows(outputs.damsireRate, sortForTable(damsireStats, "damsireRate", true), "damsire", "rate", "damsire");
+  renderBandRows(outputs.oddsBandRows, sortForTable(oddsBandStats, "oddsBandRows", false), "oddsBand");
 }
 
 function filterRaces() {
@@ -281,6 +371,8 @@ function filterRaces() {
     if (fields.surface.value && race.surface !== fields.surface.value) return false;
     if (fields.distance.value && String(race.distance) !== fields.distance.value) return false;
     if (!matchesSelectedRaceClasses(race.raceClass)) return false;
+    if (!matchesSelectedTrackConditions(race.trackCondition)) return false;
+    if (!matchesSelectedRaceConditions(race.raceCondition)) return false;
     if (race.date < period.start || race.date > period.end) return false;
     return true;
   });
@@ -292,40 +384,60 @@ function filterSummaryRows() {
     if (fields.surface.value && row.surface !== fields.surface.value) return false;
     if (fields.distance.value && String(row.distance) !== fields.distance.value) return false;
     if (!matchesSelectedRaceClasses(row.raceClass)) return false;
+    if (!matchesSelectedTrackConditions(row.trackCondition)) return false;
+    if (!matchesSelectedRaceConditions(row.raceCondition)) return false;
     if (!selectedYears().includes(row.year)) return false;
     return true;
   });
 }
 
 function selectedRaceClasses() {
-  if (fields.allClasses.classList.contains("is-active")) return [];
-  return getRaceClassButtons()
+  return selectedButtons(fields.allClasses, fields.raceClassOptions);
+}
+
+function selectedTrackConditions() {
+  return selectedButtons(fields.allTrackConditions, fields.trackConditionOptions);
+}
+
+function selectedRaceConditions() {
+  return selectedButtons(fields.allRaceConditions, fields.raceConditionOptions);
+}
+
+function selectedButtons(allButton, container) {
+  if (allButton.classList.contains("is-active")) return [];
+  return [...container.querySelectorAll("button")]
     .filter((button) => button.classList.contains("is-active"))
     .map((button) => button.value);
 }
 
-function getRaceClassButtons() {
-  return [...fields.raceClassOptions.querySelectorAll("button")];
-}
-
-function setAllRaceClassesActive() {
-  fields.allClasses.classList.add("is-active");
-  fields.allClasses.setAttribute("aria-pressed", "true");
-  getRaceClassButtons().forEach((button) => {
+function setAllButtonActive(allButton, container) {
+  allButton.classList.add("is-active");
+  allButton.setAttribute("aria-pressed", "true");
+  [...container.querySelectorAll("button")].forEach((button) => {
     button.classList.remove("is-active");
     button.setAttribute("aria-pressed", "false");
   });
 }
 
-function syncAllRaceClassButton() {
-  const hasSelectedClass = getRaceClassButtons().some((button) => button.classList.contains("is-active"));
-  fields.allClasses.classList.toggle("is-active", !hasSelectedClass);
-  fields.allClasses.setAttribute("aria-pressed", hasSelectedClass ? "false" : "true");
+function syncAllButton(allButton, container) {
+  const hasSelected = [...container.querySelectorAll("button")].some((button) => button.classList.contains("is-active"));
+  allButton.classList.toggle("is-active", !hasSelected);
+  allButton.setAttribute("aria-pressed", hasSelected ? "false" : "true");
 }
 
 function matchesSelectedRaceClasses(raceClass) {
   const classes = selectedRaceClasses();
   return !classes.length || classes.includes(raceClass);
+}
+
+function matchesSelectedTrackConditions(trackCondition) {
+  const conditions = selectedTrackConditions();
+  return !conditions.length || conditions.includes(trackCondition);
+}
+
+function matchesSelectedRaceConditions(raceCondition) {
+  const conditions = selectedRaceConditions();
+  return !conditions.length || conditions.includes(raceCondition);
 }
 
 function getPeriodRange() {
@@ -353,6 +465,8 @@ function conditionLabel() {
     fields.surface.value || "全コース",
     fields.distance.value ? `${formatDistance(fields.distance.value)}` : "全距離",
     raceClassLabel(),
+    trackConditionLabel(),
+    raceConditionLabel(),
     fields.years.options[fields.years.selectedIndex].text,
   ];
   return parts.join(" / ");
@@ -363,6 +477,19 @@ function raceClassLabel() {
   if (!classes.length) return "全クラス";
   if (classes.length <= 3) return classes.join("・");
   return `${classes.length}クラス選択`;
+}
+
+function trackConditionLabel() {
+  const conditions = selectedTrackConditions();
+  if (!conditions.length) return "全馬場";
+  return conditions.join("・");
+}
+
+function raceConditionLabel() {
+  const conditions = selectedRaceConditions();
+  if (!conditions.length) return "全条件";
+  if (conditions.length <= 3) return conditions.join("・");
+  return `${conditions.length}条件選択`;
 }
 
 function buildStats(races, key) {
@@ -452,7 +579,7 @@ function dataWarningByCounts(starts, raceCount) {
 
 function setSort(tableId, key) {
   const current = state.sorts[tableId];
-  const defaultDirection = key === "name" || key === "horseNumber" ? "asc" : "desc";
+  const defaultDirection = key === "name" || key === "horseNumber" || key === "oddsBand" ? "asc" : "desc";
   state.sorts[tableId] = {
     key,
     direction: current.key === key ? (current.direction === "asc" ? "desc" : "asc") : defaultDirection,
@@ -461,7 +588,7 @@ function setSort(tableId, key) {
 
 function sortForTable(rows, tableId, limitRows) {
   const sort = state.sorts[tableId];
-  const filtered = tableId === "horseNumberRows" ? [...rows] : filterByMinStarts(rows);
+  const filtered = ["horseNumberRows", "oddsBandRows"].includes(tableId) ? [...rows] : filterByMinStarts(rows);
   const sorted = filtered.sort((a, b) => compareBySort(a, b, sort));
   return limitRows ? sorted.slice(0, 10) : sorted;
 }
@@ -480,6 +607,7 @@ function compareBySort(a, b, sort) {
 
 function sortValue(row, key) {
   if (key === "horseNumber") return Number(row.name);
+  if (key === "oddsBand") return ODDS_BAND_OPTIONS.indexOf(row.name);
   if (key === "name") return String(row.name);
   return Number(row[key]) || 0;
 }
@@ -496,6 +624,10 @@ function updateRateTitles() {
   outputs.jockeyRateTitle.textContent = `勝率 上位（${label}）`;
   outputs.trainerWinsTitle.textContent = `勝利数 上位（${label}）`;
   outputs.trainerRateTitle.textContent = `勝率 上位（${label}）`;
+  outputs.sireWinsTitle.textContent = `勝利数 上位（${label}）`;
+  outputs.sireRateTitle.textContent = `勝率 上位（${label}）`;
+  outputs.damsireWinsTitle.textContent = `勝利数 上位（${label}）`;
+  outputs.damsireRateTitle.textContent = `勝率 上位（${label}）`;
 }
 
 function updateSortHeaders() {
@@ -585,6 +717,39 @@ function renderHorseNumberRows(target, rows) {
   });
 }
 
+function renderBandRows(target, rows) {
+  target.replaceChildren();
+  if (!rows.length) {
+    const emptyRow = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.className = "empty";
+    cell.colSpan = 7;
+    cell.textContent = "対象データがありません";
+    emptyRow.append(cell);
+    target.append(emptyRow);
+    return;
+  }
+
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    const cells = [
+      row.name,
+      row.wins,
+      row.starts,
+      formatRate(row.rate),
+      formatRate(row.quinellaRate),
+      formatRate(row.showRate),
+      formatRate(row.roi),
+    ];
+    cells.forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = value;
+      tr.append(td);
+    });
+    target.append(tr);
+  });
+}
+
 function formatRate(rate) {
   return `${(rate * 100).toFixed(1)}%`;
 }
@@ -607,12 +772,18 @@ function normalizeRows(rows) {
       surface: String(row.surface || "").trim(),
       distance: Number(String(row.distance || "").replaceAll(",", "")),
       raceClass: normalizeRaceClass(row.raceClass),
+      trackCondition: String(row.trackCondition || "").trim(),
+      raceCondition: String(row.raceCondition || "").trim(),
       race: Number(row.race) || 0,
       horseNumber: Number(row.horseNumber) || 0,
       horse: String(row.horse || "").trim(),
       jockey: String(row.jockey || "").trim(),
       trainer: String(row.trainer || "").trim(),
       winPayout: Number(row.winPayout) || 0,
+      finalOdds: Number(row.finalOdds) || 0,
+      oddsBand: String(row.oddsBand || "").trim(),
+      sire: String(row.sire || "").trim(),
+      damsire: String(row.damsire || "").trim(),
       source: String(row.source || "").trim(),
       finish: Number(row.finish),
     }))
@@ -639,6 +810,8 @@ function normalizeSummaryRows(rows) {
       surface: String(row.surface || "").trim(),
       distance: Number(String(row.distance || "").replaceAll(",", "")),
       raceClass: normalizeRaceClass(row.raceClass),
+      trackCondition: String(row.trackCondition || "").trim(),
+      raceCondition: String(row.raceCondition || "").trim(),
       name: String(row.name || "").trim(),
       starts: Number(row.starts) || 0,
       wins: Number(row.wins) || 0,
@@ -647,12 +820,23 @@ function normalizeSummaryRows(rows) {
       winReturn: Number(row.winReturn) || 0,
       raceCount: Number(row.raceCount) || 0,
     }))
-    .filter((row) => row.kind && row.year && row.course && row.surface && row.distance && row.raceClass && row.name);
+    .filter(
+      (row) =>
+        row.kind &&
+        row.year &&
+        row.course &&
+        row.surface &&
+        row.distance &&
+        row.raceClass &&
+        row.trackCondition &&
+        row.raceCondition &&
+        row.name,
+    );
 }
 
 function decodeSummaryArray(headers, dictionaries, row) {
   const decoded = Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""]));
-  ["kind", "course", "surface", "raceClass", "name"].forEach((column) => {
+  ["kind", "course", "surface", "raceClass", "trackCondition", "raceCondition", "name"].forEach((column) => {
     if (dictionaries[column]) decoded[column] = dictionaries[column][decoded[column]];
   });
   return decoded;
