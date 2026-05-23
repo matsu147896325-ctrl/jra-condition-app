@@ -42,10 +42,12 @@
           <label>
             期間
             <select id="years">
-              <option value="10" selected>過去10年（2016-2025）</option>
-              <option value="5">過去5年（2021-2025）</option>
-              <option value="3">過去3年（2023-2025）</option>
-              <option value="1">前年（2025）</option>
+              <option value="all" selected>全期間</option>
+              <option value="10">過去10年</option>
+              <option value="5">過去5年</option>
+              <option value="3">過去3年</option>
+              <option value="current">今年</option>
+              <option value="previous">前年</option>
             </select>
           </label>
           <label>
@@ -64,6 +66,18 @@
           <div class="filter-title">レースクラス</div>
           <button id="allClasses" class="class-button is-active" type="button" aria-pressed="true">すべて</button>
           <div id="raceClassOptions" class="check-grid"></div>
+        </section>
+
+        <section class="class-filter" aria-label="馬場状態">
+          <div class="filter-title">馬場状態</div>
+          <button id="allTrackConditions" class="class-button is-active" type="button" aria-pressed="true">すべて</button>
+          <div id="trackConditionOptions" class="check-grid"></div>
+        </section>
+
+        <section class="class-filter" aria-label="条件">
+          <div class="filter-title">条件</div>
+          <button id="allRaceConditions" class="class-button is-active" type="button" aria-pressed="true">すべて</button>
+          <div id="raceConditionOptions" class="check-grid"></div>
         </section>
 
         <section class="toolbar" aria-label="データ操作">
@@ -205,15 +219,124 @@
                     <th>単回率</th>
                   </tr>
                 </thead>
-                <tbody id="horseNumberRows"></tbody>
+              <tbody id="horseNumberRows"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article>
+            <div class="table-header">
+              <h2>父馬名ランキング</h2>
+              <span>勝利数順 / 勝率順</span>
+            </div>
+            <div class="tables">
+              <div>
+                <h3 id="sireWinsTitle">勝利数 上位（全て）</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>父馬</th>
+                      <th>勝利</th>
+                      <th>出走</th>
+                      <th>勝率</th>
+                      <th>連対率</th>
+                      <th>複勝率</th>
+                      <th>単回率</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sireWins"></tbody>
+                </table>
+              </div>
+              <div>
+                <h3 id="sireRateTitle">勝率 上位（全て）</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>父馬</th>
+                      <th>勝率</th>
+                      <th>勝利</th>
+                      <th>出走</th>
+                      <th>連対率</th>
+                      <th>複勝率</th>
+                      <th>単回率</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sireRate"></tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+
+          <article>
+            <div class="table-header">
+              <h2>母父馬名ランキング</h2>
+              <span>勝利数順 / 勝率順</span>
+            </div>
+            <div class="tables">
+              <div>
+                <h3 id="damsireWinsTitle">勝利数 上位（全て）</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>母父馬</th>
+                      <th>勝利</th>
+                      <th>出走</th>
+                      <th>勝率</th>
+                      <th>連対率</th>
+                      <th>複勝率</th>
+                      <th>単回率</th>
+                    </tr>
+                  </thead>
+                  <tbody id="damsireWins"></tbody>
+                </table>
+              </div>
+              <div>
+                <h3 id="damsireRateTitle">勝率 上位（全て）</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>母父馬</th>
+                      <th>勝率</th>
+                      <th>勝利</th>
+                      <th>出走</th>
+                      <th>連対率</th>
+                      <th>複勝率</th>
+                      <th>単回率</th>
+                    </tr>
+                  </thead>
+                  <tbody id="damsireRate"></tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+
+          <article class="wide">
+            <div class="table-header">
+              <h2>最終オッズ別成績</h2>
+              <span>オッズ帯順</span>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>最終オッズ</th>
+                    <th>勝利</th>
+                    <th>出走</th>
+                    <th>勝率</th>
+                    <th>連対率</th>
+                    <th>複勝率</th>
+                    <th>単回率</th>
+                  </tr>
+                </thead>
+                <tbody id="oddsBandRows"></tbody>
               </table>
             </div>
           </article>
         </section>
       </section>
     </main>
-    <script src="summary-data.js?v=20260522a"></script>
+    <script src="summary-data.js?v=20260523d"></script>
     <script src="trainer-affiliations.js?v=20260520b"></script>
-    <script src="app.js?v=20260522a"></script>
+    <script src="app.js?v=20260523d"></script>
   </body>
 </html>
