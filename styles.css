@@ -320,6 +320,35 @@ th {
   font-weight: 800;
 }
 
+.sort-button {
+  width: 100%;
+  min-height: 0;
+  justify-content: flex-end;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+}
+
+th:first-child .sort-button {
+  justify-content: flex-start;
+}
+
+.sort-button.is-sorted {
+  color: #09664a;
+}
+
+.sort-button.is-sorted::after {
+  content: " ↓";
+}
+
+.sort-button.is-sorted[data-direction="asc"]::after {
+  content: " ↑";
+}
+
 td:first-child {
   font-weight: 800;
 }

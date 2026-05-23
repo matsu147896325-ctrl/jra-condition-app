@@ -42,18 +42,20 @@
           <label>
             期間
             <select id="years">
-              <option value="3">過去3年</option>
-              <option value="2">過去2年</option>
-              <option value="1">過去1年</option>
-              <option value="0">全期間</option>
+              <option value="10" selected>過去10年（2016-2025）</option>
+              <option value="5">過去5年（2021-2025）</option>
+              <option value="3">過去3年（2023-2025）</option>
+              <option value="1">前年（2025）</option>
             </select>
           </label>
           <label>
             最低騎乗・出走数
             <select id="minStarts">
               <option value="0" selected>全て</option>
+              <option value="10">10以上</option>
+              <option value="30">30以上</option>
+              <option value="50">50以上</option>
               <option value="100">100以上</option>
-              <option value="500">500以上</option>
             </select>
           </label>
         </section>
@@ -210,8 +212,8 @@
         </section>
       </section>
     </main>
-    <script src="summary-data.js?v=20260521b"></script>
+    <script src="summary-data.js?v=20260522a"></script>
     <script src="trainer-affiliations.js?v=20260520b"></script>
-    <script src="app.js?v=20260521c"></script>
+    <script src="app.js?v=20260522a"></script>
   </body>
 </html>
