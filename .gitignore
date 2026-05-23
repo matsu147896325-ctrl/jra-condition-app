@@ -1,2 +1,5 @@
 data/*.json
 !data/jra-results-manifest.json
+data/*.csv
+jra-condition-summary.csv
+github-upload-root/

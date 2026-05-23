@@ -79,6 +79,7 @@ const DEFAULT_DATA_URLS = ["data/jra-results-actual.csv", "jra-results-actual.cs
 const state = {
   races: [],
   summary: [],
+  loadError: "",
   sorts: {
     jockeyWins: { key: "wins", direction: "desc" },
     jockeyRate: { key: "rate", direction: "desc" },
@@ -188,23 +189,27 @@ loadDefaultData();
 async function loadDefaultData() {
   outputs.dataWarning.textContent = "実データを読み込み中です。";
   try {
-    if (window.SUMMARY_ROWS) {
+    if (window.SUMMARY_READY) await window.SUMMARY_READY;
+    if (window.SUMMARY_ROWS?.length) {
       state.summary = normalizeSummaryRows(window.SUMMARY_ROWS);
     } else {
       const text = await fetchFirstAvailable(SUMMARY_DATA_URLS);
       state.summary = normalizeSummaryRows(parseCsv(text));
     }
     state.races = [];
+    state.loadError = "";
   } catch (error) {
+    const summaryError = window.SUMMARY_LOAD_ERROR || error.message;
     try {
       const text = await fetchFirstAvailable(DEFAULT_DATA_URLS);
       state.races = normalizeRows(parseCsv(text));
       state.summary = [];
+      state.loadError = "";
     } catch (fallbackError) {
       state.races = [];
       state.summary = [];
-      outputs.dataWarning.textContent =
-        "実データを読み込めませんでした。ページを再読み込みするか、CSV読み込みを使ってください。";
+      state.loadError =
+        summaryError || "実データを読み込めませんでした。ページを再読み込みするか、CSV読み込みを使ってください。";
     }
   }
   hydrateFilters();
@@ -604,6 +609,7 @@ function dateRange(races) {
 }
 
 function dataWarning(races, raceCount) {
+  if (state.loadError) return state.loadError;
   if (!races.length) return "この条件に一致する実データがありません。";
   if (raceCount < 5) return "対象レースが5未満です。勝率ランキングはかなりブレます。";
   if (races.length < 50) return "対象出走が50未満です。勝率ランキングは参考値として見てください。";
@@ -611,6 +617,7 @@ function dataWarning(races, raceCount) {
 }
 
 function dataWarningByCounts(starts, raceCount) {
+  if (state.loadError) return state.loadError;
   if (!starts) return "この条件に一致する実データがありません。";
   if (raceCount < 5) return "対象レースが5未満です。勝率ランキングはかなりブレます。";
   if (starts < 50) return "対象出走が50未満です。勝率ランキングは参考値として見てください。";

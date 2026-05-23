@@ -1,13 +1,13 @@
 # 日本競馬 条件別ランキング
 
-施行条件を選ぶと、過去10年の騎手・厩舎・馬番について条件別成績を表示するブラウザアプリです。
+施行条件を選ぶと、騎手・厩舎・馬番・父馬・母父馬・最終オッズ帯について条件別成績を表示するブラウザアプリです。
 
 ## 使い方
 
 GitHub PagesなどのWebサーバー上で `index.html` を開くと、JRA公式のレース結果HTMLから取得した実データCSVを自動で読み込みます。
 ローカルでファイルを直接開いた場合はブラウザの制限でCSVを自動読み込みできないことがあるため、画面の `CSV読み込み` から `data/jra-results-actual.csv` を選んでください。
-現在同梱しているデータは34,548レース、477,670出走分です。
-期間は2016年1月1日から2025年12月31日までの10年分です。
+現在同梱しているデータは35,898レース、496,674出走分です。
+期間は2016年1月5日から2026年5月23日までです。今後の再取得では、取得日の今年途中分まで含めます。
 単勝回収率用に、1着馬の単勝払戻金も取り込んでいます。
 
 競馬場は中央競馬10場を北から順に固定しています。
@@ -33,10 +33,11 @@ date,course,surface,distance,race,raceName,raceClass,finish,horseNumber,horse,jo
 1行は1頭の出走結果として扱います。勝率は `1着数 / 出走数` で計算します。
 単勝回収率は `単勝払戻合計 / (出走数 * 100円)` で計算します。1着以外の `winPayout` は `0` で問題ありません。
 
-期間は暦年単位で、`過去10年（2016-2025） / 過去5年（2021-2025） / 過去3年（2023-2025） / 前年（2025）` から選べます。
+期間は暦年単位で、`全期間 / 過去10年 / 過去5年 / 過去3年 / 今年 / 前年` から選べます。
 ランキングは最低騎乗・出走数を `全て / 10以上 / 30以上 / 50以上 / 100以上` で切り替えられます。初期値は `全て` です。
 表の列見出しを押すと、勝利数・勝率・連対率・複勝率・単勝回収率などで並び替えできます。
 レースクラスは `GⅠ / GⅡ / GⅢ / リステッド / オープン特別 / 3勝クラス / 2勝クラス / 1勝クラス / 新馬・未勝利` から複数選択できます。初期値は `すべて` です。
+馬場状態は `良 / 稍重 / 重 / 不良`、条件は `古馬混合 / 牝馬限定 / 3歳限定 / 3歳牝馬限定 / 2歳限定 / 2歳牝馬限定` から複数選択できます。
 馬番別成績では、馬番ごとの勝利数・出走数・勝率・連対率・複勝率・単勝回収率を確認できます。
 厩舎名の後ろには、取得できた調教師所属マスターに基づいて `（栗東）`、`（美浦）`、不明時は `（その他）` を表示します。
 
@@ -49,7 +50,18 @@ JRA公式のレース結果HTMLから取得したCSVは `data/jra-results-actual
 & 'C:\Users\matsu\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' tools\fetch-jra-results.mjs
 ```
 
-この処理は `data/jra-results-actual.csv` を更新します。
+この処理は `data/jra-results-actual.csv` を、実行日の今年途中分まで含めて更新します。任意の日付で止めたい場合は `JRA_END_DATE=2026-05-23` のように指定できます。
+
+結果取得後、馬場状態・条件・最終オッズ・父馬・母父馬を補強し、画面用集計を作り直してください。
+
+```powershell
+& 'C:\Users\matsu\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' tools\enrich-results.mjs
+& 'C:\Users\matsu\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' tools\build-summary.mjs
+& 'C:\Users\matsu\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' tools\build-summary-js.mjs
+Copy-Item data\jra-condition-summary.csv jra-condition-summary.csv -Force
+```
+
+GitHub Pagesへ公開する場合、巨大なCSVはアップロード不要です。アップロードするのは `summary-data.js`、`summary-data-rows-001.js` 以降の分割ファイル、`index.html`、`app.js`、`styles.css`、`trainer-affiliations.js`、必要な `tools/` のみで十分です。
 
 件数が少ない条件では、画面上に注意メッセージを表示します。
 
