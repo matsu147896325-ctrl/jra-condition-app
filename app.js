@@ -67,8 +67,11 @@ const ODDS_BAND_OPTIONS = [
   "100倍台以上",
 ];
 
-const DATA_START_YEAR = 2016;
-const DATA_END_YEAR = 2025;
+const SUMMARY_META = window.SUMMARY_META || {};
+const DATA_START_DATE = SUMMARY_META.startDate || "2016-01-01";
+const DATA_END_DATE = SUMMARY_META.endDate || "2026-05-23";
+const DATA_START_YEAR = Number(DATA_START_DATE.slice(0, 4));
+const DATA_END_YEAR = Number(DATA_END_DATE.slice(0, 4));
 
 const SUMMARY_DATA_URLS = ["data/jra-condition-summary.csv", "jra-condition-summary.csv"];
 const DEFAULT_DATA_URLS = ["data/jra-results-actual.csv", "jra-results-actual.csv"];
@@ -231,6 +234,7 @@ function hydrateFilters() {
   fillButtonOptions(fields.raceClassOptions, RACE_CLASS_OPTIONS, fields.allClasses);
   fillButtonOptions(fields.trackConditionOptions, TRACK_CONDITION_OPTIONS, fields.allTrackConditions);
   fillButtonOptions(fields.raceConditionOptions, RACE_CONDITION_OPTIONS, fields.allRaceConditions);
+  updatePeriodOptions();
 }
 
 function initSortableHeaders() {
@@ -441,12 +445,48 @@ function matchesSelectedRaceConditions(raceCondition) {
 }
 
 function getPeriodRange() {
-  const years = Number(fields.years.value) || 10;
+  const value = fields.years.value;
+  if (value === "all") {
+    return {
+      start: `${DATA_START_YEAR}-01-01`,
+      end: DATA_END_DATE,
+    };
+  }
+  if (value === "current") {
+    return {
+      start: `${DATA_END_YEAR}-01-01`,
+      end: DATA_END_DATE,
+    };
+  }
+  if (value === "previous") {
+    return {
+      start: `${DATA_END_YEAR - 1}-01-01`,
+      end: `${DATA_END_YEAR - 1}-12-31`,
+    };
+  }
+
+  const years = Number(value) || 10;
   const startYear = Math.max(DATA_START_YEAR, DATA_END_YEAR - years + 1);
   return {
     start: `${startYear}-01-01`,
-    end: `${DATA_END_YEAR}-12-31`,
+    end: DATA_END_DATE,
   };
+}
+
+function updatePeriodOptions() {
+  const currentYearLabel = DATA_END_DATE.endsWith("-12-31") ? String(DATA_END_YEAR) : `${DATA_END_YEAR}途中`;
+  const labels = {
+    all: `全期間（${DATA_START_YEAR}-${currentYearLabel}）`,
+    10: `過去10年（${Math.max(DATA_START_YEAR, DATA_END_YEAR - 9)}-${currentYearLabel}）`,
+    5: `過去5年（${Math.max(DATA_START_YEAR, DATA_END_YEAR - 4)}-${currentYearLabel}）`,
+    3: `過去3年（${Math.max(DATA_START_YEAR, DATA_END_YEAR - 2)}-${currentYearLabel}）`,
+    current: `今年（${currentYearLabel}）`,
+    previous: `前年（${DATA_END_YEAR - 1}）`,
+  };
+
+  [...fields.years.options].forEach((option) => {
+    if (labels[option.value]) option.textContent = labels[option.value];
+  });
 }
 
 function selectedYears() {
