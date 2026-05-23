@@ -11,7 +11,9 @@ const conditions = new Map();
 for (const row of rows) {
   const year = row.date.slice(0, 4);
   const raceClass = row.raceClass || "未分類";
-  const baseKey = [year, row.course, row.surface, row.distance, raceClass].join("|");
+  const trackCondition = row.trackCondition || "不明";
+  const raceCondition = row.raceCondition || "不明";
+  const baseKey = [year, row.course, row.surface, row.distance, raceClass, trackCondition, raceCondition].join("|");
   const condition = conditions.get(baseKey) || {
     kind: "condition",
     year,
@@ -19,6 +21,8 @@ for (const row of rows) {
     surface: row.surface,
     distance: row.distance,
     raceClass,
+    trackCondition,
+    raceCondition,
     name: "__all__",
     starts: 0,
     wins: 0,
@@ -39,10 +43,10 @@ for (const row of rows) {
   condition.maxDate = row.date > condition.maxDate ? row.date : condition.maxDate;
   conditions.set(baseKey, condition);
 
-  for (const kind of ["jockey", "trainer", "horseNumber"]) {
+  for (const kind of ["jockey", "trainer", "horseNumber", "sire", "damsire", "oddsBand"]) {
     const name = kind === "horseNumber" ? row.horseNumber : row[kind];
     if (!name) continue;
-    const entityKey = [kind, year, row.course, row.surface, row.distance, raceClass, name].join("|");
+    const entityKey = [kind, year, row.course, row.surface, row.distance, raceClass, trackCondition, raceCondition, name].join("|");
     const entity = entities.get(entityKey) || {
       kind,
       year,
@@ -50,6 +54,8 @@ for (const row of rows) {
       surface: row.surface,
       distance: row.distance,
       raceClass,
+      trackCondition,
+      raceCondition,
       name,
       starts: 0,
       wins: 0,
@@ -84,6 +90,8 @@ const headers = [
   "surface",
   "distance",
   "raceClass",
+  "trackCondition",
+  "raceCondition",
   "name",
   "starts",
   "wins",

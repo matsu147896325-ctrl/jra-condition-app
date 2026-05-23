@@ -2,10 +2,12 @@ import fs from "node:fs";
 
 const input = "data/jra-condition-summary.csv";
 const output = "summary-data.js";
+const chunkPrefix = "summary-data-rows-";
+const chunkSize = 50000;
 
 const rows = parseCsv(fs.readFileSync(input, "utf8").trim());
 const headers = rows.shift();
-const encodedColumns = ["kind", "course", "surface", "raceClass", "name"];
+const encodedColumns = ["kind", "course", "surface", "raceClass", "trackCondition", "raceCondition", "name"];
 const dictionaries = Object.fromEntries(encodedColumns.map((column) => [column, []]));
 const dictionaryMaps = Object.fromEntries(encodedColumns.map((column) => [column, new Map()]));
 const compactHeaders = [
@@ -15,6 +17,8 @@ const compactHeaders = [
   "surface",
   "distance",
   "raceClass",
+  "trackCondition",
+  "raceCondition",
   "name",
   "starts",
   "wins",
@@ -25,6 +29,10 @@ const compactHeaders = [
 ];
 
 const objects = rows.map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
+const meta = {
+  startDate: objects.reduce((min, row) => row.minDate && row.minDate < min ? row.minDate : min, "9999-99-99"),
+  endDate: objects.reduce((max, row) => row.maxDate && row.maxDate > max ? row.maxDate : max, ""),
+};
 const compactRows = objects.map((row) => [
   Number(row.year),
   dictionaryIndex("kind", row.kind),
@@ -32,6 +40,8 @@ const compactRows = objects.map((row) => [
   dictionaryIndex("surface", row.surface),
   Number(row.distance),
   dictionaryIndex("raceClass", row.raceClass),
+  dictionaryIndex("trackCondition", row.trackCondition),
+  dictionaryIndex("raceCondition", row.raceCondition),
   dictionaryIndex("name", row.name),
   Number(row.starts),
   Number(row.wins),
@@ -41,18 +51,55 @@ const compactRows = objects.map((row) => [
   Number(row.raceCount),
 ]);
 
+for (const file of fs.readdirSync(".")) {
+  if (file.startsWith(chunkPrefix) && file.endsWith(".js")) fs.rmSync(file);
+}
+
+const chunkFiles = [];
+for (let index = 0; index < compactRows.length; index += chunkSize) {
+  const chunkNo = Math.floor(index / chunkSize) + 1;
+  const file = `${chunkPrefix}${String(chunkNo).padStart(3, "0")}.js`;
+  const rowsChunk = compactRows.slice(index, index + chunkSize);
+  fs.writeFileSync(
+    file,
+    [
+      `window.SUMMARY_ROWS = window.SUMMARY_ROWS.concat(${JSON.stringify(rowsChunk)});`,
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  chunkFiles.push(file);
+}
+
+const version = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
 fs.writeFileSync(
   output,
   [
     `window.SUMMARY_HEADERS = ${JSON.stringify(compactHeaders)};`,
+    `window.SUMMARY_META = ${JSON.stringify(meta)};`,
     `window.SUMMARY_DICTIONARIES = ${JSON.stringify(dictionaries)};`,
-    `window.SUMMARY_ROWS = ${JSON.stringify(compactRows)};`,
+    `window.SUMMARY_ROWS = [];`,
+    `window.SUMMARY_CHUNKS = ${JSON.stringify(chunkFiles)};`,
+    `window.SUMMARY_VERSION = ${JSON.stringify(version)};`,
+    `window.SUMMARY_LOAD_ERROR = "";`,
+    `window.SUMMARY_READY = window.SUMMARY_CHUNKS.reduce((chain, src) => chain.then(() => new Promise((resolve, reject) => {`,
+    `  const script = document.createElement("script");`,
+    `  script.src = src + "?v=" + window.SUMMARY_VERSION;`,
+    `  script.onload = resolve;`,
+    `  script.onerror = () => {`,
+    `    window.SUMMARY_LOAD_ERROR = src + " を読み込めませんでした。summary-data.js と summary-data-rows-*.js を同じ場所にアップロードしてください。";`,
+    `    reject(new Error(window.SUMMARY_LOAD_ERROR));`,
+    `  };`,
+    `  document.head.append(script);`,
+    `})), Promise.resolve());`,
     "",
   ].join("\n"),
   "utf8",
 );
 console.log(`summary_js_rows=${compactRows.length}`);
 console.log(`summary_js_bytes=${fs.statSync(output).size}`);
+console.log(`summary_js_chunks=${chunkFiles.length}`);
+console.log(`summary_js_largest_chunk=${Math.max(...chunkFiles.map((file) => fs.statSync(file).size))}`);
 
 function dictionaryIndex(column, value) {
   const text = String(value ?? "");

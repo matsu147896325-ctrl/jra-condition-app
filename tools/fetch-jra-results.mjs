@@ -4,7 +4,7 @@ import path from "node:path";
 const ROOT = "https://www.jra.go.jp";
 const ACCESS_PATH = "/JRADB/accessS.html";
 const START_DATE = "2016-01-01";
-const END_DATE = "2025-12-31";
+const END_DATE = process.env.JRA_END_DATE || todayInJapan();
 const CURRENT_YEAR = Number(END_DATE.slice(0, 4));
 const RACE_FETCH_CONCURRENCY = 8;
 const REQUEST_RETRIES = 6;
@@ -385,4 +385,14 @@ function buildManifest(rows, raceLinks) {
     surfaces: countBy("surface"),
     distances: countBy("distance"),
   };
+}
+
+function todayInJapan() {
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(new Date());
 }
